@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "https://ciaozappy.it" },
+    { "source": "/:slug", "destination": "/api/og?slug=:slug" }
+  ]
+}
