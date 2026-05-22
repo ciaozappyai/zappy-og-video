@@ -2,6 +2,7 @@
   "name": "zappy-og-video",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "OG meta tag service per i video di outreach Zappy (video.ciaozappy.it/<slug>)",
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
