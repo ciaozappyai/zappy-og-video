@@ -21,19 +21,35 @@ function escapeHtml(s: string): string {
 
 function renderHtml(opts: {
   slug: string;
-  youtubeId: string;
+  youtubeId: string | null;
+  bunnyThumbnailUrl: string | null;
   ogTitle: string;
   ogDescription: string;
 }): string {
   const redirectUrl = `${SITE_BASE}/video/${encodeURIComponent(opts.slug)}`;
   const ogUrl = `${OG_BASE}/${encodeURIComponent(opts.slug)}`;
-  const image = `https://i.ytimg.com/vi/${encodeURIComponent(opts.youtubeId)}/maxresdefault.jpg`;
+
+  // Priorità: Bunny custom thumbnail (URL salvata dinamicamente in Supabase) →
+  //          fallback YouTube (per record legacy con youtube_id valorizzato) →
+  //          null (omette i tag og:image*; meglio preview senza immagine che immagine rotta)
+  const image: string | null =
+    opts.bunnyThumbnailUrl ??
+    (opts.youtubeId
+      ? `https://i.ytimg.com/vi/${encodeURIComponent(opts.youtubeId)}/maxresdefault.jpg`
+      : null);
 
   const title = escapeHtml(opts.ogTitle);
   const desc = escapeHtml(opts.ogDescription);
-  const img = escapeHtml(image);
   const url = escapeHtml(ogUrl);
   const redirect = escapeHtml(redirectUrl);
+
+  const imageMetaTags = image
+    ? `<meta property="og:image" content="${escapeHtml(image)}" />
+<meta property="og:image:secure_url" content="${escapeHtml(image)}" />
+<meta property="og:image:width" content="1280" />
+<meta property="og:image:height" content="720" />
+<meta name="twitter:image" content="${escapeHtml(image)}" />`
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="it">
@@ -49,15 +65,11 @@ function renderHtml(opts: {
 <meta property="og:url" content="${url}" />
 <meta property="og:title" content="${title}" />
 <meta property="og:description" content="${desc}" />
-<meta property="og:image" content="${img}" />
-<meta property="og:image:secure_url" content="${img}" />
-<meta property="og:image:width" content="1280" />
-<meta property="og:image:height" content="720" />
+${imageMetaTags}
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${title}" />
 <meta name="twitter:description" content="${desc}" />
-<meta name="twitter:image" content="${img}" />
 
 <meta http-equiv="refresh" content="0; url=${redirect}" />
 <link rel="canonical" href="${redirect}" />
@@ -94,7 +106,7 @@ export default async function handler(req: any, res: any) {
 
     const { data, error } = await supabase
       .from("outreach_videos")
-      .select("slug, youtube_id, og_title, og_description")
+      .select("slug, youtube_id, bunny_thumbnail_url, og_title, og_description")
       .eq("slug", slug)
       .maybeSingle();
 
@@ -114,6 +126,7 @@ export default async function handler(req: any, res: any) {
     const html = renderHtml({
       slug: data.slug,
       youtubeId: data.youtube_id,
+      bunnyThumbnailUrl: data.bunny_thumbnail_url,
       ogTitle: data.og_title || "Un video pensato apposta per te",
       ogDescription:
         data.og_description ||
